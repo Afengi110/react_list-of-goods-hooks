@@ -1,8 +1,10 @@
+import React from 'react';
+import { useState } from 'react';
+import cn from 'classnames';
 import 'bulma/css/bulma.css';
 import './App.scss';
-import { useState, useMemo, useCallback, useRef } from 'react';
 
-export const goodsFromServer: string[] = [
+export const goodsFromServer = [
   'Dumplings',
   'Carrot',
   'Eggs',
@@ -15,95 +17,98 @@ export const goodsFromServer: string[] = [
   'Garlic',
 ];
 
-enum SortType {
-  None = 'none',
-  Alphabet = 'alphabet',
+enum SorType {
+  Default = '',
+  Alphabetically = 'alphabet',
   Length = 'length',
 }
 
-export const App = (): JSX.Element => {
-  const [order, setOrder] = useState<SortType>(SortType.None);
-  const [reversed, setReversed] = useState<boolean>(false);
+const getSortedGoods = (
+  goods: string[],
+  sortType: SorType,
+  isReversed: boolean,
+) => {
+  const sortedGoods = [...goods];
 
-  const initialGoods = useRef<string[]>([...goodsFromServer]);
+  switch (sortType) {
+    case SorType.Alphabetically:
+      sortedGoods.sort((a, b) => a.localeCompare(b));
+      break;
 
-  const buildGoods = useCallback(
-    (
-      sourceGoods: string[],
-      sortOrder: SortType,
-      isReversed: boolean,
-    ): string[] => {
-      const result = [...sourceGoods];
+    case SorType.Length:
+      sortedGoods.sort((a, b) => a.length - b.length);
+      break;
 
-      switch (sortOrder) {
-        case SortType.Alphabet:
-          result.sort((a, b) => a.localeCompare(b));
-          break;
-        case SortType.Length:
-          result.sort((a, b) => a.length - b.length);
-          break;
-        default:
-          break;
-      }
+    default:
+      break;
+  }
 
-      if (isReversed) {
-        result.reverse();
-      }
+  if (isReversed) {
+    return sortedGoods.reverse();
+  }
 
-      return result;
-    },
-    [],
-  );
+  return sortedGoods;
+};
 
-  // обчислюємо поточний масив товарів без зайвого стану
-  const goods = useMemo(
-    () => buildGoods(initialGoods.current, order, reversed),
-    [order, reversed, buildGoods],
-  );
+export const App: React.FC = () => {
+  const [activeSort, setActiveSort] = useState(SorType.Default);
+  const [isReversed, setIsReversed] = useState(false);
 
-  const isInitialOrder = useMemo(() => {
-    if (order !== SortType.None || reversed) {
-      return false;
-    }
+  const sortedGoods = getSortedGoods(goodsFromServer, activeSort, isReversed);
 
-    return goods.every((item, i) => item === initialGoods.current[i]);
-  }, [goods, order, reversed]);
+  const handleSortChange = (sortType: SorType) => {
+    setActiveSort(sortType);
+  };
+
+  const handleToggleReverse = () => {
+    setIsReversed(prev => !prev);
+  };
+
+  const handleResetGoods = () => {
+    setActiveSort(SorType.Default);
+    setIsReversed(false);
+  };
+
+  const isModified = activeSort !== SorType.Default || isReversed;
 
   return (
     <div className="section content">
       <div className="buttons">
         <button
           type="button"
-          className={`button is-info ${order !== SortType.Alphabet ? 'is-light' : ''}`}
-          onClick={() => setOrder(SortType.Alphabet)}
+          className={cn('button', 'is-info', {
+            'is-light': activeSort !== 'alphabet',
+          })}
+          onClick={() => handleSortChange(SorType.Alphabetically)}
         >
           Sort alphabetically
         </button>
 
         <button
           type="button"
-          className={`button is-info ${order !== SortType.Length ? 'is-light' : ''}`}
-          onClick={() => setOrder(SortType.Length)}
+          className={cn('button', 'is-success', {
+            'is-light': activeSort !== 'length',
+          })}
+          onClick={() => handleSortChange(SorType.Length)}
         >
           Sort by length
         </button>
 
         <button
           type="button"
-          className={`button is-warning ${!reversed ? 'is-light' : ''}`}
-          onClick={() => setReversed(prev => !prev)}
+          className={cn('button', 'is-warning', {
+            'is-light': !isReversed,
+          })}
+          onClick={handleToggleReverse}
         >
           Reverse
         </button>
 
-        {!isInitialOrder && (
+        {isModified && (
           <button
             type="button"
             className="button is-danger"
-            onClick={() => {
-              setOrder(SortType.None);
-              setReversed(false);
-            }}
+            onClick={handleResetGoods}
           >
             Reset
           </button>
@@ -111,7 +116,7 @@ export const App = (): JSX.Element => {
       </div>
 
       <ul>
-        {goods.map(good => (
+        {sortedGoods.map(good => (
           <li key={good} data-cy="Good">
             {good}
           </li>
